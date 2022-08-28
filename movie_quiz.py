@@ -10,10 +10,13 @@ from playsound import playsound
 
 from constants import (
     API_ACCESS,
+    DESCRIPTION_HUMAN_PRINT,
     DESCRIPTION_TEXT,
     DESCRIPTION_TTS,
     DESCRIPTION_TYPING_SPEED,
+    HUMAN_PRINT,
     ID_BY_MOVIE,
+    KEYWORD_HUMAN_PRINT,
     KEYWORD_TTS,
     LANGUAGE,
     MAX_KEYWORDS,
@@ -22,6 +25,7 @@ from constants import (
     SKIPPABLE,
     STARTING_TEXT,
     STATUS_CODE_INFO,
+    TITLE_HUMAN_PRINT,
     TITLE_TEXT,
     TITLE_TRANSLATOR_DICTIONARY,
     TITLE_TTS,
@@ -112,7 +116,7 @@ def set_movie(json_string: str) -> Movie:
 def run_keyword_quiz(keyword_dicts: list[dict]) -> None:
 
     random.shuffle(keyword_dicts)
-    
+
     keywords = [
         keyword_dict.get("name")
         for keyword_dict in keyword_dicts
@@ -122,7 +126,8 @@ def run_keyword_quiz(keyword_dicts: list[dict]) -> None:
     for keyword in keywords:
         keyword_translated = get_translation(keyword)
 
-        human_print(keyword_translated)
+        if KEYWORD_HUMAN_PRINT:
+            human_print(keyword_translated)
         if KEYWORD_TTS:
             convert_text_to_speech(keyword, keyword_translated)
 
@@ -137,10 +142,12 @@ def run_keyword_quiz(keyword_dicts: list[dict]) -> None:
 
 def show_movie_description(description: str) -> None:
     description_text_translated = get_translation(DESCRIPTION_TEXT)
-    human_print(description_text_translated)
+    if DESCRIPTION_HUMAN_PRINT:
+        human_print(description_text_translated)
 
     description_translated = get_translation(description)
-    human_print(description_translated, DESCRIPTION_TYPING_SPEED)
+    if DESCRIPTION_HUMAN_PRINT:
+        human_print(description_translated, DESCRIPTION_TYPING_SPEED)
 
     if DESCRIPTION_TTS:
         convert_text_to_speech(DESCRIPTION_TEXT, description_text_translated)
@@ -149,12 +156,14 @@ def show_movie_description(description: str) -> None:
 
 def show_movie_title(title: str) -> None:
     title_text_translated = get_translation(TITLE_TEXT)
-    human_print(title_text_translated)
+    if TITLE_HUMAN_PRINT:
+        human_print(title_text_translated)
 
     title_translated = get_translation_with_dictionary(
         title, TITLE_TRANSLATOR_DICTIONARY
     )
-    human_print(title_translated)
+    if TITLE_HUMAN_PRINT:
+        human_print(title_translated)
 
     if TITLE_TTS:
         convert_text_to_speech(TITLE_TEXT, title_text_translated)
@@ -176,6 +185,9 @@ def get_translation_with_dictionary(text: str, dictionary: dict) -> str:
 
 
 def human_print(text: str, typing_speed: int = TYPING_SPEED) -> None:
+    if not HUMAN_PRINT:
+        return
+
     for char in text:
         print(char, end="")
         time.sleep(random.random() * 10.0 / typing_speed)
