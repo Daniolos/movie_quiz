@@ -33,7 +33,7 @@ insert the api key together with this line
 
 create a virtual environment using
 
-`python3 -m venv movienv`,
+`python3 -m venv movi_env`,
 
 activate the venv using
 
