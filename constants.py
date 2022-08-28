@@ -1,7 +1,13 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
 TYPING_SPEED = 80
 DESCRIPTION_TYPING_SPEED = 500
 MAX_KEYWORDS = 15
-API_ACCESS = False
+API_ACCESS = True
 SKIPPABLE = True
 LANGUAGE = "en"
 TTS_LANGUAGE = "en"
@@ -15,7 +21,7 @@ MDB_LIST_URL = "https://mdblist.p.rapidapi.com/"
 
 MDB_LIST_HEADERS = {
     "x-rapidapi-host": "mdblist.p.rapidapi.com",
-    "x-rapidapi-key": "323cf39924msh5b6fb84122a6bb7p1bc977jsn427210d2dcfd",
+    "x-rapidapi-key": os.getenv('X_RAPID_API_KEY'),
 }
 
 STATUS_CODE_INFO = {
