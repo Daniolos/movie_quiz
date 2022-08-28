@@ -207,6 +207,7 @@ class TestMovieQuiz(unittest.TestCase):
         human_print_mock.assert_called_once()
 
     @patch("movie_quiz.DESCRIPTION_TTS", True)
+    @patch("movie_quiz.DESCRIPTION_HUMAN_PRINT", True)
     @patch("movie_quiz.convert_text_to_speech")
     @patch("movie_quiz.human_print")
     @patch("movie_quiz.get_translation", side_effect=lambda x: x)
@@ -224,6 +225,7 @@ class TestMovieQuiz(unittest.TestCase):
         self.assertEqual(convert_text_to_speech_mock.call_count, 2)
 
     @patch("movie_quiz.DESCRIPTION_TTS", False)
+    @patch("movie_quiz.DESCRIPTION_HUMAN_PRINT", True)
     @patch("movie_quiz.convert_text_to_speech")
     @patch("movie_quiz.human_print")
     @patch("movie_quiz.get_translation", side_effect=lambda x: x)
