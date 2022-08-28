@@ -1,2 +1,7 @@
 __pycache__/
 movie_env/
+htmlcov/
+.vscode/
+.pytest_cache
+.env
+example_response.json
