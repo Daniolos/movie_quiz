@@ -7,7 +7,7 @@ load_dotenv()
 TYPING_SPEED = 80
 DESCRIPTION_TYPING_SPEED = 500
 MAX_KEYWORDS = 15
-API_ACCESS = True
+API_ACCESS = False
 SKIPPABLE = True
 LANGUAGE = "en"
 TTS_LANGUAGE = "en"
@@ -31,6 +31,8 @@ STATUS_CODE_INFO = {
     "4": "Client error. There’s something wrong with the way the browser asked for the page.",
     "5": "Server error. Something went wrong with the way the server tried to send the page.",
 }
+
+RESPONSES_PATH = "responses/"
 
 STARTING_TEXT = """
 ███╗   ███╗ ██████╗ ██╗   ██╗██╗███████╗     ██████╗ ██╗   ██╗██╗███████╗

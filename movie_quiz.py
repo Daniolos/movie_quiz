@@ -89,7 +89,7 @@ def get_response_json(id):
     if not str(response.status_code).startswith("2"):
         print(get_status_code_info(response.status_code))
         return
-    
+
     return response.text
 
 
@@ -109,16 +109,18 @@ def set_movie(json_string: str) -> Movie:
     return Movie(movie_details)
 
 
-def run_keyword_quiz(keywords: list[dict]) -> None:
+def run_keyword_quiz(keyword_dicts: list[dict]) -> None:
 
-    random.shuffle(keywords)
+    random.shuffle(keyword_dicts)
+    
+    keywords = [
+        keyword_dict.get("name")
+        for keyword_dict in keyword_dicts
+        if "-" not in keyword_dict.get("name")
+    ][:MAX_KEYWORDS]
 
-    for keyword_dict, _ in zip(keywords, range(MAX_KEYWORDS)):
-        keyword = keyword_dict.get("name")
+    for keyword in keywords:
         keyword_translated = get_translation(keyword)
-
-        if "-" in keyword_translated:
-            continue
 
         human_print(keyword_translated)
         if KEYWORD_TTS:
@@ -184,7 +186,11 @@ def convert_text_to_speech(text: str, text_translated) -> None:
     if not TTS:
         return
 
-    text = text_translated if LANGUAGE == TTS_LANGUAGE else get_translation(text, TTS_LANGUAGE)
+    text = (
+        text_translated
+        if LANGUAGE == TTS_LANGUAGE
+        else get_translation(text, TTS_LANGUAGE)
+    )
 
     tts = gtts.gTTS(text, lang=TTS_LANGUAGE_PRONOUNCIATION)
     tts.save("tts.mp3")

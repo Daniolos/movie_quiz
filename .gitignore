@@ -1,6 +1,7 @@
 __pycache__/
 movie_env/
 htmlcov/
+.coverage
 .vscode/
 .pytest_cache
 .env
