@@ -1,8 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 export default function Header() {
   const location = useLocation();
+  const hasValidApiKeys = useSettingsStore((state) => state.hasValidApiKeys());
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -30,16 +32,18 @@ export default function Header() {
             >
               Home
             </Link>
-            <Link
-              to="/quiz"
-              className={`transition-colors ${
-                isActive('/quiz')
-                  ? 'text-primary-400'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Quiz
-            </Link>
+            {hasValidApiKeys && (
+              <Link
+                to="/quiz"
+                className={`transition-colors ${
+                  isActive('/quiz')
+                    ? 'text-primary-400'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Quiz
+              </Link>
+            )}
             <Link
               to="/settings"
               className={`transition-colors ${
