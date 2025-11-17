@@ -223,16 +223,36 @@ export default function SettingsPage() {
           <div className="glass-dark p-8 rounded-xl mb-8">
             <h2 className="text-2xl font-semibold mb-4">Cache Management</h2>
             <p className="text-gray-400 mb-4">
-              Movie data is cached locally to save API calls. Clear cache if you want to fetch fresh data.
+              Movie data is cached in your browser's localStorage permanently.
+              This saves API calls when you play the same movies again.
             </p>
+
+            {/* Cache Stats */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-gray-900/50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-primary-400">
+                  {movieService.getCacheStats().totalMovies}
+                </div>
+                <div className="text-sm text-gray-400">Cached Movies</div>
+              </div>
+              <div className="bg-gray-900/50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-primary-400">
+                  {movieService.getCacheStats().totalSizeKB} KB
+                </div>
+                <div className="text-sm text-gray-400">Storage Used</div>
+              </div>
+            </div>
+
             <Button
               variant="danger"
               onClick={() => {
                 movieService.clearCache();
                 showToast('Cache cleared successfully!', 'success');
+                // Force re-render to update stats
+                window.location.reload();
               }}
             >
-              Clear Movie Cache
+              Clear All Cached Data
             </Button>
           </div>
 

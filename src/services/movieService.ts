@@ -3,29 +3,67 @@ import { Movie } from '@/types/movie.types';
 
 const RAPIDAPI_BASE_URL = 'https://imdb232.p.rapidapi.com/api';
 
+// Autocomplete API response
 interface IMDbAutocompleteResult {
   d: Array<{
     i?: {
+      height: number;
       imageUrl: string;
+      width: number;
     };
     id: string;
     l: string; // title
-    q?: string; // type (e.g., "feature")
+    q?: string; // type (e.g., "feature", "TV series")
+    qid?: string;
     rank?: number;
     s?: string; // stars/cast
     y?: number; // year
+    yr?: string; // year range for series
   }>;
+  q: string;
+  v: number;
 }
 
-interface IMDbKeyword {
-  keyword: string;
+// Keywords API response (complex nested structure)
+interface IMDbKeywordsResponse {
+  data: {
+    title: {
+      id: string;
+      titleType: {
+        id: string;
+      };
+      keywordItemCategories: Array<{
+        itemCategory: {
+          id: string;
+          itemCategoryId: string;
+          text: string;
+        };
+        keywords: {
+          __typename: string;
+          total: number;
+          edges: Array<{
+            node: {
+              keyword: {
+                id: string;
+                text: {
+                  text: string;
+                };
+                category: {
+                  id: string;
+                } | null;
+              };
+            };
+          }>;
+        };
+      }>;
+    };
+  };
 }
 
 // Cache structure in localStorage
 interface MovieCache {
   [movieId: string]: {
     movie: Movie;
-    timestamp: number;
     keywords: string[];
   };
 }
@@ -33,7 +71,6 @@ interface MovieCache {
 class MovieService {
   private apiKey: string = '';
   private cacheKey = 'movie-quiz-cache';
-  private cacheExpiry = 7 * 24 * 60 * 60 * 1000; // 7 days
 
   setApiKey(key: string): void {
     this.apiKey = key;
@@ -46,7 +83,7 @@ class MovieService {
     };
   }
 
-  // Cache management
+  // Cache management (no expiry - user controls when to clear)
   private getCache(): MovieCache {
     try {
       const cached = localStorage.getItem(this.cacheKey);
@@ -63,9 +100,9 @@ class MovieService {
       cache[movieId] = {
         movie,
         keywords,
-        timestamp: Date.now(),
       };
       localStorage.setItem(this.cacheKey, JSON.stringify(cache));
+      console.log(`Cached movie: ${movie.title} (${movieId})`);
     } catch (error) {
       console.error('Error saving to cache:', error);
     }
@@ -77,26 +114,29 @@ class MovieService {
 
     if (!cached) return null;
 
-    // Check if cache is expired
-    if (Date.now() - cached.timestamp > this.cacheExpiry) {
-      return null;
-    }
+    console.log(`Using cached data for: ${cached.movie.title}`);
+    return cached;
+  }
 
-    return {
-      movie: cached.movie,
-      keywords: cached.keywords,
-    };
+  getCacheStats(): { totalMovies: number; totalSizeKB: number } {
+    const cache = this.getCache();
+    const totalMovies = Object.keys(cache).length;
+    const cacheString = JSON.stringify(cache);
+    const totalSizeKB = Math.round((cacheString.length * 2) / 1024); // UTF-16 = 2 bytes per char
+
+    return { totalMovies, totalSizeKB };
   }
 
   clearCache(): void {
     try {
       localStorage.removeItem(this.cacheKey);
+      console.log('Cache cleared successfully');
     } catch (error) {
       console.error('Error clearing cache:', error);
     }
   }
 
-  async searchMovies(query: string): Promise<Array<{ id: string; title: string; year?: number }>> {
+  async searchMovies(query: string): Promise<Array<{ id: string; title: string; year?: number; imageUrl?: string }>> {
     try {
       const response = await axios.get<IMDbAutocompleteResult>(
         `${RAPIDAPI_BASE_URL}/autocomplete`,
@@ -112,6 +152,7 @@ class MovieService {
           id: item.id,
           title: item.l,
           year: item.y,
+          imageUrl: item.i?.imageUrl,
         }));
     } catch (error) {
       console.error('Error searching movies:', error);
@@ -121,7 +162,7 @@ class MovieService {
 
   async getMovieKeywords(movieId: string): Promise<string[]> {
     try {
-      const response = await axios.get<IMDbKeyword[]>(
+      const response = await axios.get<IMDbKeywordsResponse>(
         `${RAPIDAPI_BASE_URL}/title/get-keywords`,
         {
           headers: this.getHeaders(),
@@ -129,11 +170,26 @@ class MovieService {
         }
       );
 
-      // Filter out keywords with hyphens
-      return response.data
-        .map((kw) => kw.keyword)
-        .filter((keyword) => !keyword.includes('-'))
-        .slice(0, 20); // Limit to 20
+      // Extract keywords from nested structure
+      const allKeywords: string[] = [];
+
+      if (response.data?.data?.title?.keywordItemCategories) {
+        response.data.data.title.keywordItemCategories.forEach((category) => {
+          if (category.keywords?.edges) {
+            category.keywords.edges.forEach((edge) => {
+              const keywordText = edge.node.keyword.text.text;
+              // Filter out keywords with hyphens and those starting with "character says"
+              if (!keywordText.includes('-') && !keywordText.startsWith('character says')) {
+                allKeywords.push(keywordText);
+              }
+            });
+          }
+        });
+      }
+
+      // Limit to 20 keywords and shuffle
+      const shuffled = allKeywords.sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, 20);
     } catch (error) {
       console.error('Error fetching keywords:', error);
       return [];
@@ -144,15 +200,14 @@ class MovieService {
     // Check cache first
     const cached = this.getFromCache(movieId);
     if (cached) {
-      console.log('Using cached movie data for', movieId);
       return cached.movie;
     }
 
     try {
-      // Fetch keywords in parallel with movie search
+      // Fetch keywords and basic info in parallel
       const [keywords, searchResults] = await Promise.all([
         this.getMovieKeywords(movieId),
-        this.searchMovies(movieId), // Get basic info from autocomplete
+        this.searchMovies(movieId), // Search by ID to get basic info
       ]);
 
       // Find the movie in search results
@@ -166,15 +221,15 @@ class MovieService {
         id: movieId,
         title: movieInfo.title,
         year: movieInfo.year || 0,
-        description: 'Plot description coming soon...', // IMDb API doesn't provide plot in free tier
+        description: 'Description not available from this API endpoint', // IMDb API doesn't provide plot in these endpoints
         keywords: keywords,
-        genres: [],
-        posterUrl: '',
-        rating: 0,
+        genres: [], // Not available in these endpoints
+        posterUrl: movieInfo.imageUrl || '',
+        rating: 0, // Not available in these endpoints
         imdbId: movieId,
       };
 
-      // Cache the result
+      // Cache the result (no expiry)
       this.saveToCache(movieId, movie, keywords);
 
       return movie;
@@ -185,7 +240,7 @@ class MovieService {
   }
 
   async getRandomMovie(): Promise<Movie> {
-    // List of popular movie IDs from various franchises
+    // List of popular movie IDs from IMDb top-rated
     const popularMovieIds = [
       'tt0111161', // The Shawshank Redemption
       'tt0068646', // The Godfather
@@ -241,6 +296,7 @@ class MovieService {
       'tt0087843', // Once Upon a Time in America
       'tt0082971', // Raiders of the Lost Ark
       'tt0082096', // Das Boot
+      'tt20215968', // Hit Man (2023)
     ];
 
     // Pick random movie ID
