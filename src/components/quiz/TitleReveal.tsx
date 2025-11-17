@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useQuizStore } from '@/stores/quizStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import TypingText from '@/components/shared/TypingText';
 import Button from '@/components/shared/Button';
+import { movieService } from '@/services/movieService';
 
 export default function TitleReveal() {
   const navigate = useNavigate();
@@ -11,6 +13,35 @@ export default function TitleReveal() {
   const { enableTypingEffect, typingSpeed } = useSettingsStore(
     (state) => state.preferences
   );
+
+  const [overview, setOverview] = useState<{
+    plot: string;
+    certificate: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (currentMovie) {
+      fetchOverview();
+    }
+  }, [currentMovie]);
+
+  const fetchOverview = async () => {
+    if (!currentMovie) return;
+
+    try {
+      setLoading(true);
+      const data = await movieService.getMovieOverview(currentMovie.imdbId || currentMovie.id);
+      setOverview({
+        plot: data.plot,
+        certificate: data.certificate,
+      });
+    } catch (error) {
+      console.error('Failed to fetch overview:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!currentMovie) return null;
 
@@ -64,7 +95,7 @@ export default function TitleReveal() {
           <img
             src={currentMovie.posterUrl}
             alt={currentMovie.title}
-            className="w-full rounded-xl shadow-2xl"
+            className="w-full max-h-[50vh] object-contain rounded-xl shadow-2xl"
           />
         </motion.div>
       )}
@@ -76,7 +107,7 @@ export default function TitleReveal() {
         transition={{ delay: 1 }}
         className="glass p-6 rounded-xl max-w-2xl mx-auto"
       >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-6">
           <div>
             <div className="text-2xl font-bold text-primary-400">
               {currentMovie.rating ? currentMovie.rating.toFixed(1) : 'N/A'}
@@ -85,7 +116,7 @@ export default function TitleReveal() {
           </div>
           <div>
             <div className="text-2xl font-bold text-primary-400">
-              {currentMovie.year}
+              {currentMovie.year || 'N/A'}
             </div>
             <div className="text-sm text-gray-400">Year</div>
           </div>
@@ -102,6 +133,23 @@ export default function TitleReveal() {
             <div className="text-sm text-gray-400">Runtime</div>
           </div>
         </div>
+
+        {/* Plot */}
+        {!loading && overview?.plot && (
+          <div className="border-t border-gray-700 pt-4">
+            <h3 className="text-lg font-semibold mb-2">Plot</h3>
+            <p className="text-gray-300 text-sm leading-relaxed">{overview.plot}</p>
+          </div>
+        )}
+
+        {/* Certificate */}
+        {!loading && overview?.certificate && (
+          <div className="mt-3 text-center">
+            <span className="inline-block px-3 py-1 bg-gray-700 rounded-full text-sm text-gray-300">
+              Rated: {overview.certificate}
+            </span>
+          </div>
+        )}
       </motion.div>
 
       {/* Actions */}

@@ -9,6 +9,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useUIStore } from '@/stores/uiStore';
 import { movieService } from '@/services/movieService';
 import { geminiService } from '@/services/geminiService';
+import { openRouterService } from '@/services/openRouterService';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function SettingsPage() {
   const [apiKeys, setApiKeys] = useState({
     rapidApi: settings.apiKeys.rapidApi,
     gemini: settings.apiKeys.gemini,
+    openRouter: settings.apiKeys.openRouter,
   });
 
   const [preferences, setPreferences] = useState(settings.preferences);
@@ -57,6 +59,22 @@ export default function SettingsPage() {
       }
     } catch (error) {
       showToast('Failed to validate Gemini API key', 'error');
+    }
+    setIsValidating(false);
+  };
+
+  const handleValidateOpenRouterApi = async () => {
+    setIsValidating(true);
+    try {
+      const isValid = await openRouterService.validateApiKey(apiKeys.openRouter);
+      if (isValid) {
+        showToast('OpenRouter API key is valid!', 'success');
+        settings.updateApiKeys({ openRouter: apiKeys.openRouter });
+      } else {
+        showToast('Invalid OpenRouter API key', 'error');
+      }
+    } catch (error) {
+      showToast('Failed to validate OpenRouter API key', 'error');
     }
     setIsValidating(false);
   };
@@ -115,6 +133,29 @@ export default function SettingsPage() {
                   size="sm"
                   variant="secondary"
                   onClick={handleValidateGeminiApi}
+                  isLoading={isValidating}
+                  className="mt-2"
+                >
+                  Test Connection
+                </Button>
+              </div>
+
+              {/* OpenRouter API Key */}
+              <div>
+                <Input
+                  label="OpenRouter API Key"
+                  type="password"
+                  value={apiKeys.openRouter}
+                  onChange={(e) =>
+                    setApiKeys({ ...apiKeys, openRouter: e.target.value })
+                  }
+                  placeholder="Enter your OpenRouter API key"
+                  helperText="Get API key from https://openrouter.ai/ (Required for Trivia Quiz)"
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleValidateOpenRouterApi}
                   isLoading={isValidating}
                   className="mt-2"
                 >

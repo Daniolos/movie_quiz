@@ -75,6 +75,86 @@ interface IMDbPlotResponse {
   };
 }
 
+// Overview API response
+interface IMDbOverviewResponse {
+  data: {
+    title: {
+      id: string;
+      titleText: {
+        text: string;
+      };
+      releaseYear: {
+        year: number;
+      };
+      runtime?: {
+        seconds: number;
+      };
+      ratingsSummary?: {
+        aggregateRating: number;
+        voteCount: number;
+      };
+      genres?: {
+        genres: Array<{
+          text: string;
+        }>;
+      };
+      plot?: {
+        plotText: {
+          plainText: string;
+        };
+      };
+      primaryImage?: {
+        url: string;
+      };
+      certificate?: {
+        rating: string;
+      };
+    };
+  };
+}
+
+// Quotes API response
+interface IMDbQuotesResponse {
+  data: {
+    title: {
+      id: string;
+      quotes?: {
+        edges: Array<{
+          node: {
+            id: string;
+            lines: Array<{
+              text: string;
+              characters?: Array<{
+                character: string;
+              }>;
+            }>;
+          };
+        }>;
+      };
+    };
+  };
+}
+
+// Trivia API response
+interface IMDbTriviaResponse {
+  data: {
+    title: {
+      id: string;
+      trivia?: {
+        edges: Array<{
+          node: {
+            id: string;
+            text: {
+              plainText: string;
+            };
+            isSpoiler: boolean;
+          };
+        }>;
+      };
+    };
+  };
+}
+
 // Details API response
 interface IMDbDetailsResponse {
   data: {
@@ -413,6 +493,138 @@ class MovieService {
         console.error('[MovieService] API Error Details:', error.response?.data);
       }
       throw new Error('Failed to get movie details');
+    }
+  }
+
+  async getMovieOverview(movieId: string): Promise<{
+    title: string;
+    year: number;
+    runtime: number;
+    rating: number;
+    voteCount: number;
+    genres: string[];
+    plot: string;
+    imageUrl: string;
+    certificate: string;
+  }> {
+    try {
+      console.log('[MovieService] Fetching overview for:', movieId);
+      const response = await axios.get<IMDbOverviewResponse>(
+        `${RAPIDAPI_BASE_URL}/title/get-overview`,
+        {
+          headers: this.getHeaders(),
+          params: { tt: movieId },
+        }
+      );
+
+      console.log('[MovieService] Overview API response:', response.data);
+
+      const title = response.data?.data?.title;
+
+      return {
+        title: title?.titleText?.text || '',
+        year: title?.releaseYear?.year || 0,
+        runtime: title?.runtime?.seconds ? Math.round(title.runtime.seconds / 60) : 0,
+        rating: title?.ratingsSummary?.aggregateRating || 0,
+        voteCount: title?.ratingsSummary?.voteCount || 0,
+        genres: title?.genres?.genres?.map((g) => g.text) || [],
+        plot: title?.plot?.plotText?.plainText || '',
+        imageUrl: title?.primaryImage?.url || '',
+        certificate: title?.certificate?.rating || '',
+      };
+    } catch (error) {
+      console.error('[MovieService] Error fetching overview:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('[MovieService] API Error Details:', error.response?.data);
+      }
+      return {
+        title: '',
+        year: 0,
+        runtime: 0,
+        rating: 0,
+        voteCount: 0,
+        genres: [],
+        plot: '',
+        imageUrl: '',
+        certificate: '',
+      };
+    }
+  }
+
+  async getMovieQuotes(movieId: string): Promise<Array<{ id: string; text: string; character: string }>> {
+    try {
+      console.log('[MovieService] Fetching quotes for:', movieId);
+      const response = await axios.get<IMDbQuotesResponse>(
+        `${RAPIDAPI_BASE_URL}/title/get-quotes`,
+        {
+          headers: this.getHeaders(),
+          params: { tt: movieId, limit: 20 },
+        }
+      );
+
+      console.log('[MovieService] Quotes API response:', response.data);
+
+      const quotes: Array<{ id: string; text: string; character: string }> = [];
+
+      if (response.data?.data?.title?.quotes?.edges) {
+        response.data.data.title.quotes.edges.forEach((edge) => {
+          edge.node.lines.forEach((line) => {
+            const character = line.characters?.[0]?.character || 'Unknown';
+            quotes.push({
+              id: edge.node.id,
+              text: line.text,
+              character: character,
+            });
+          });
+        });
+      }
+
+      console.log('[MovieService] Extracted quotes:', quotes);
+      return quotes.slice(0, 10); // Limit to 10 quotes
+    } catch (error) {
+      console.error('[MovieService] Error fetching quotes:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('[MovieService] API Error Details:', error.response?.data);
+      }
+      return [];
+    }
+  }
+
+  async getMovieTrivia(movieId: string): Promise<Array<{ id: string; text: string }>> {
+    try {
+      console.log('[MovieService] Fetching trivia for:', movieId);
+      const response = await axios.get<IMDbTriviaResponse>(
+        `${RAPIDAPI_BASE_URL}/title/get-trivia`,
+        {
+          headers: this.getHeaders(),
+          params: { tt: movieId, limit: 20 },
+        }
+      );
+
+      console.log('[MovieService] Trivia API response:', response.data);
+
+      const triviaList: Array<{ id: string; text: string }> = [];
+
+      if (response.data?.data?.title?.trivia?.edges) {
+        response.data.data.title.trivia.edges.forEach((edge) => {
+          // Filter out spoilers
+          if (!edge.node.isSpoiler) {
+            triviaList.push({
+              id: edge.node.id,
+              text: edge.node.text.plainText,
+            });
+          }
+        });
+      }
+
+      console.log('[MovieService] Extracted trivia:', triviaList);
+      return triviaList.slice(0, 5); // Limit to 5 trivia items
+    } catch (error) {
+      console.error('[MovieService] Error fetching trivia:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('[MovieService] API Error Details:', error.response?.data);
+      }
+      return [];
     }
   }
 
