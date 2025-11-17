@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export function useTypingEffect(
   text: string,
@@ -7,29 +7,43 @@ export function useTypingEffect(
 ) {
   const [displayedText, setDisplayedText] = useState('');
   const [isComplete, setIsComplete] = useState(false);
+  const indexRef = useRef(0);
 
   useEffect(() => {
+    // Ensure text is a valid string
+    const safeText = text || '';
+
     if (!enabled) {
-      setDisplayedText(text);
+      setDisplayedText(safeText);
       setIsComplete(true);
       return;
     }
 
+    // Reset state
     setDisplayedText('');
     setIsComplete(false);
+    indexRef.current = 0;
 
-    let index = 0;
+    // Build the text character by character
     const interval = setInterval(() => {
-      if (index < text.length) {
-        setDisplayedText((prev) => prev + text[index]);
-        index++;
+      const currentIndex = indexRef.current;
+
+      if (currentIndex < safeText.length) {
+        const char = safeText[currentIndex];
+        // Only append if character is valid
+        if (char !== undefined) {
+          setDisplayedText(safeText.substring(0, currentIndex + 1));
+        }
+        indexRef.current++;
       } else {
         setIsComplete(true);
         clearInterval(interval);
       }
     }, 1000 / speed);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [text, speed, enabled]);
 
   return { displayedText, isComplete };

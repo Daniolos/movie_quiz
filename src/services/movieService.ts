@@ -138,6 +138,7 @@ class MovieService {
 
   async searchMovies(query: string): Promise<Array<{ id: string; title: string; year?: number; imageUrl?: string }>> {
     try {
+      console.log('[MovieService] Searching for:', query);
       const response = await axios.get<IMDbAutocompleteResult>(
         `${RAPIDAPI_BASE_URL}/autocomplete`,
         {
@@ -146,22 +147,32 @@ class MovieService {
         }
       );
 
-      return response.data.d
+      console.log('[MovieService] Autocomplete API response:', response.data);
+
+      const results = response.data.d
         .filter((item) => item.q === 'feature' || item.q === 'TV movie') // Only movies
         .map((item) => ({
-          id: item.id,
-          title: item.l,
+          id: item.id || '',
+          title: (item.l || '').trim(),
           year: item.y,
           imageUrl: item.i?.imageUrl,
-        }));
+        }))
+        .filter((item) => item.id && item.title); // Only include items with valid ID and title
+
+      console.log('[MovieService] Filtered results:', results);
+      return results;
     } catch (error) {
-      console.error('Error searching movies:', error);
+      console.error('[MovieService] Error searching movies:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('[MovieService] API Error Details:', error.response?.data);
+      }
       throw new Error('Failed to search movies');
     }
   }
 
   async getMovieKeywords(movieId: string): Promise<string[]> {
     try {
+      console.log('[MovieService] Fetching keywords for:', movieId);
       const response = await axios.get<IMDbKeywordsResponse>(
         `${RAPIDAPI_BASE_URL}/title/get-keywords`,
         {
@@ -170,6 +181,8 @@ class MovieService {
         }
       );
 
+      console.log('[MovieService] Keywords API response:', response.data);
+
       // Extract keywords from nested structure
       const allKeywords: string[] = [];
 
@@ -177,21 +190,40 @@ class MovieService {
         response.data.data.title.keywordItemCategories.forEach((category) => {
           if (category.keywords?.edges) {
             category.keywords.edges.forEach((edge) => {
-              const keywordText = edge.node.keyword.text.text;
-              // Filter out keywords with hyphens and those starting with "character says"
-              if (!keywordText.includes('-') && !keywordText.startsWith('character says')) {
-                allKeywords.push(keywordText);
+              try {
+                const keywordText = edge?.node?.keyword?.text?.text;
+
+                // Validate keyword is a non-empty string
+                if (keywordText && typeof keywordText === 'string' && keywordText.trim()) {
+                  const cleaned = keywordText.trim();
+                  // Filter out keywords with hyphens and those starting with "character says"
+                  if (!cleaned.includes('-') && !cleaned.startsWith('character says')) {
+                    allKeywords.push(cleaned);
+                  }
+                }
+              } catch (err) {
+                console.warn('[MovieService] Error extracting keyword from edge:', edge, err);
               }
             });
           }
         });
+      } else {
+        console.error('[MovieService] Unexpected API response structure:', response.data);
       }
+
+      console.log('[MovieService] Extracted keywords:', allKeywords);
 
       // Limit to 20 keywords and shuffle
       const shuffled = allKeywords.sort(() => Math.random() - 0.5);
-      return shuffled.slice(0, 20);
+      const final = shuffled.slice(0, 20);
+
+      console.log('[MovieService] Final keywords (shuffled, max 20):', final);
+      return final;
     } catch (error) {
-      console.error('Error fetching keywords:', error);
+      console.error('[MovieService] Error fetching keywords:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('[MovieService] API Error Details:', error.response?.data);
+      }
       return [];
     }
   }
@@ -200,10 +232,13 @@ class MovieService {
     // Check cache first
     const cached = this.getFromCache(movieId);
     if (cached) {
+      console.log('[MovieService] Using cached movie:', cached.movie.title);
       return cached.movie;
     }
 
     try {
+      console.log('[MovieService] Fetching movie details for:', movieId);
+
       // Fetch keywords and basic info in parallel
       const [keywords, searchResults] = await Promise.all([
         this.getMovieKeywords(movieId),
@@ -214,12 +249,15 @@ class MovieService {
       const movieInfo = searchResults.find((m) => m.id === movieId);
 
       if (!movieInfo) {
+        console.error('[MovieService] Movie not found in search results:', movieId);
         throw new Error('Movie not found');
       }
 
+      console.log('[MovieService] Movie info:', movieInfo);
+
       const movie: Movie = {
         id: movieId,
-        title: movieInfo.title,
+        title: movieInfo.title.trim(), // Ensure no extra whitespace
         year: movieInfo.year || 0,
         description: 'Description not available from this API endpoint', // IMDb API doesn't provide plot in these endpoints
         keywords: keywords,
@@ -229,12 +267,17 @@ class MovieService {
         imdbId: movieId,
       };
 
+      console.log('[MovieService] Created movie object:', movie);
+
       // Cache the result (no expiry)
       this.saveToCache(movieId, movie, keywords);
 
       return movie;
     } catch (error) {
-      console.error('Error getting movie details:', error);
+      console.error('[MovieService] Error getting movie details:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('[MovieService] API Error Details:', error.response?.data);
+      }
       throw new Error('Failed to get movie details');
     }
   }
