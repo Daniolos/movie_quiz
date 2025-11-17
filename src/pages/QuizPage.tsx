@@ -57,15 +57,6 @@ export default function QuizPage() {
           if (mainImage) {
             setGeneratedImage('main', mainImage);
           }
-
-          // Generate description image
-          const descImage = await geminiService.generateDescriptionImage(
-            movie.description,
-            movie.title
-          );
-          if (descImage) {
-            setGeneratedImage('description', descImage);
-          }
         } catch (error) {
           console.error('Image generation failed:', error);
           showToast('Failed to generate images, continuing without them', 'warning');
@@ -73,7 +64,13 @@ export default function QuizPage() {
       }
 
       setLoading(false);
-      startQuiz();
+
+      // Start with image phase if images enabled, otherwise skip to keywords
+      if (settings.preferences.enableImages) {
+        startQuiz(); // This sets phase to 'image'
+      } else {
+        setPhase('keywords'); // Skip directly to keywords
+      }
     } catch (error: any) {
       console.error('Quiz initialization failed:', error);
       setError('Failed to load quiz. Please check your API keys.');

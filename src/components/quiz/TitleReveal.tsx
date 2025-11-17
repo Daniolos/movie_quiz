@@ -79,9 +79,9 @@ export default function TitleReveal() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div>
             <div className="text-2xl font-bold text-primary-400">
-              {currentMovie.rating}
+              {currentMovie.rating ? currentMovie.rating.toFixed(1) : 'N/A'}
             </div>
-            <div className="text-sm text-gray-400">Rating</div>
+            <div className="text-sm text-gray-400">IMDb Rating</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-primary-400">
@@ -91,7 +91,7 @@ export default function TitleReveal() {
           </div>
           <div>
             <div className="text-2xl font-bold text-primary-400">
-              {currentMovie.genres[0] || 'N/A'}
+              {currentMovie.genres && currentMovie.genres.length > 0 ? currentMovie.genres[0] : 'N/A'}
             </div>
             <div className="text-sm text-gray-400">Genre</div>
           </div>

@@ -60,6 +60,63 @@ interface IMDbKeywordsResponse {
   };
 }
 
+// Plot API response
+interface IMDbPlotResponse {
+  data: {
+    title: {
+      id: string;
+      plot?: {
+        id: string;
+        plotText: {
+          plainText: string;
+        };
+      };
+    };
+  };
+}
+
+// Details API response
+interface IMDbDetailsResponse {
+  data: {
+    title: {
+      __typename: string;
+      id: string;
+      titleText: {
+        text: string;
+        isOriginalTitle: boolean;
+      };
+      releaseYear: {
+        __typename: string;
+        year: number;
+        endYear: number | null;
+      };
+      releaseDate?: {
+        year: number;
+        month: number;
+        day: number;
+      };
+      primaryImage?: {
+        url: string;
+        height: number;
+        width: number;
+      };
+      runtime?: {
+        seconds: number;
+      };
+      genres?: {
+        genres: Array<{
+          id: string;
+          text: string;
+        }>;
+      };
+      ratingsSummary?: {
+        aggregateRating: number;
+        voteCount: number;
+      };
+    };
+  };
+}
+
 // Cache structure in localStorage
 interface MovieCache {
   [movieId: string]: {
@@ -228,6 +285,79 @@ class MovieService {
     }
   }
 
+  async getMoviePlot(movieId: string): Promise<string> {
+    try {
+      console.log('[MovieService] Fetching plot for:', movieId);
+      const response = await axios.get<IMDbPlotResponse>(
+        `${RAPIDAPI_BASE_URL}/title/get-plot`,
+        {
+          headers: this.getHeaders(),
+          params: { tt: movieId },
+        }
+      );
+
+      console.log('[MovieService] Plot API response:', response.data);
+
+      const plot = response.data?.data?.title?.plot?.plotText?.plainText;
+      return plot?.trim() || 'Plot not available';
+    } catch (error) {
+      console.error('[MovieService] Error fetching plot:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('[MovieService] API Error Details:', error.response?.data);
+      }
+      return 'Plot not available';
+    }
+  }
+
+  async getMovieDetailsData(movieId: string): Promise<{
+    runtime: number;
+    genres: string[];
+    rating: number;
+    voteCount: number;
+    imageUrl: string;
+  }> {
+    try {
+      console.log('[MovieService] Fetching detailed data for:', movieId);
+      const response = await axios.get<IMDbDetailsResponse>(
+        `${RAPIDAPI_BASE_URL}/title/get-details`,
+        {
+          headers: this.getHeaders(),
+          params: { tt: movieId },
+        }
+      );
+
+      console.log('[MovieService] Details API response:', response.data);
+
+      const title = response.data?.data?.title;
+
+      const runtime = title?.runtime?.seconds ? Math.round(title.runtime.seconds / 60) : 0;
+      const genres = title?.genres?.genres?.map((g) => g.text) || [];
+      const rating = title?.ratingsSummary?.aggregateRating || 0;
+      const voteCount = title?.ratingsSummary?.voteCount || 0;
+      const imageUrl = title?.primaryImage?.url || '';
+
+      return {
+        runtime,
+        genres,
+        rating,
+        voteCount,
+        imageUrl,
+      };
+    } catch (error) {
+      console.error('[MovieService] Error fetching details:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('[MovieService] API Error Details:', error.response?.data);
+      }
+      return {
+        runtime: 0,
+        genres: [],
+        rating: 0,
+        voteCount: 0,
+        imageUrl: '',
+      };
+    }
+  }
+
   async getMovieDetails(movieId: string): Promise<Movie> {
     // Check cache first
     const cached = this.getFromCache(movieId);
@@ -239,13 +369,15 @@ class MovieService {
     try {
       console.log('[MovieService] Fetching movie details for:', movieId);
 
-      // Fetch keywords and basic info in parallel
-      const [keywords, searchResults] = await Promise.all([
+      // Fetch all data in parallel
+      const [keywords, searchResults, plot, details] = await Promise.all([
         this.getMovieKeywords(movieId),
-        this.searchMovies(movieId), // Search by ID to get basic info
+        this.searchMovies(movieId), // Search by ID to get basic info and year
+        this.getMoviePlot(movieId),
+        this.getMovieDetailsData(movieId),
       ]);
 
-      // Find the movie in search results
+      // Find the movie in search results for title and year
       const movieInfo = searchResults.find((m) => m.id === movieId);
 
       if (!movieInfo) {
@@ -257,13 +389,15 @@ class MovieService {
 
       const movie: Movie = {
         id: movieId,
-        title: movieInfo.title.trim(), // Ensure no extra whitespace
+        title: movieInfo.title.trim(),
         year: movieInfo.year || 0,
-        description: 'Description not available from this API endpoint', // IMDb API doesn't provide plot in these endpoints
+        description: plot,
         keywords: keywords,
-        genres: [], // Not available in these endpoints
-        posterUrl: movieInfo.imageUrl || '',
-        rating: 0, // Not available in these endpoints
+        genres: details.genres,
+        posterUrl: details.imageUrl || movieInfo.imageUrl || '',
+        rating: details.rating,
+        voteCount: details.voteCount,
+        runtime: details.runtime,
         imdbId: movieId,
       };
 
