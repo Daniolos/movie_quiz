@@ -113,8 +113,8 @@ export default function HomePage() {
             <div className="text-gray-500 text-sm mt-6">
               <p>Requires:</p>
               <ul className="mt-2 space-y-1">
-                <li>• TMDb API Key (free)</li>
-                <li>• Google Gemini API Key (for images)</li>
+                <li>• RapidAPI Key (for IMDb movie data)</li>
+                <li>• Google Gemini API Key (for AI images)</li>
               </ul>
               <Link
                 to="/settings"

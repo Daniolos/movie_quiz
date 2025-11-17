@@ -22,8 +22,8 @@ An interactive web-based movie quiz game powered by AI-generated images and movi
 ### Prerequisites
 
 You'll need API keys for:
-1. **TMDb API** (free) - Get it from [https://www.themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
-2. **Google Gemini API** (for image generation) - Get it from [https://ai.google.dev/](https://ai.google.dev/)
+1. **RapidAPI** (for IMDb data) - Subscribe to IMDb API at [RapidAPI](https://rapidapi.com/), search for "imdb232" API
+2. **Google Gemini API** (for AI image generation) - Get it from [https://ai.google.dev/](https://ai.google.dev/)
 
 ### Installation
 
@@ -71,7 +71,7 @@ You'll need API keys for:
 - **React Router 7** - Routing
 
 ### APIs
-- **TMDb API** - Movie data (titles, descriptions, keywords, ratings)
+- **RapidAPI (IMDb)** - Movie data (titles, keywords) via imdb232 API
 - **Google Gemini API** - AI image generation
 
 ## 📁 Project Structure
@@ -138,13 +138,18 @@ movie_quiz/
 ### API Cost Estimation
 
 Per game (with images enabled):
-- **TMDb API**: Free
+- **RapidAPI (IMDb)**: Depends on your subscription plan (basic plans start at ~$10/month for limited calls)
+  - **Cached movies**: FREE (uses local cache, valid for 7 days)
+  - **New movies**: 2 API calls per game (autocomplete + keywords)
 - **Gemini Image Generation**:
   - Main movie image: $0.039
   - Description image: $0.039
-  - **Total**: ~$0.08 per game
+  - **Total per game**: ~$0.08
 
-To reduce costs, disable image generation in Settings.
+**Cost Saving Tips**:
+- Movie data is cached for 7 days - repeated games with same movie = FREE
+- Disable image generation to eliminate Gemini costs
+- The app includes 50+ popular movie IDs that are rotated randomly
 
 ## 🧪 Development
 
@@ -178,16 +183,16 @@ dist/
 
 ### Adding More Movies
 
-Edit `src/utils/constants.ts`:
+Edit `src/services/movieService.ts` in the `getRandomMovie()` method:
 
 ```typescript
-export const CURATED_MOVIES = {
-  'Your Movie Title': 12345, // TMDb movie ID
+const popularMovieIds = [
+  'tt1234567', // Add IMDb ID here
   // Add more...
-};
+];
 ```
 
-Find TMDb IDs at [https://www.themoviedb.org/](https://www.themoviedb.org/)
+Find IMDb IDs at [https://www.imdb.com/](https://www.imdb.com/) (look in the URL: imdb.com/title/**tt1234567**/)
 
 ### Styling
 
@@ -201,11 +206,18 @@ Find TMDb IDs at [https://www.themoviedb.org/](https://www.themoviedb.org/)
 - Ensure API keys are correct (no extra spaces)
 - Check internet connection
 - Verify API quotas haven't been exceeded
+- For RapidAPI: Make sure you're subscribed to the "imdb232" API on RapidAPI
+- Check that your RapidAPI subscription is active
 
 ### Images Not Generating
 - Verify Gemini API key is valid
 - Check that "Enable AI Images" is toggled ON in Settings
-- Try reducing image quality in Settings
+- Gemini API has rate limits - wait a moment and try again
+
+### Movie Data Not Loading
+- Verify RapidAPI key is valid for "imdb232" API
+- Check your RapidAPI subscription limits
+- Try clearing the movie cache in Settings if you see stale data
 
 ### Build Errors
 ```bash

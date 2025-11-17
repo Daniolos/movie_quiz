@@ -38,7 +38,7 @@ export default function QuizPage() {
       setPhase('loading');
 
       // Set API keys
-      movieService.setApiKey(settings.apiKeys.movieApiKey);
+      movieService.setApiKey(settings.apiKeys.rapidApi);
       geminiService.setApiKey(settings.apiKeys.gemini);
 
       // Fetch random movie

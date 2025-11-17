@@ -4,8 +4,7 @@ export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface APIKeys {
   gemini: string;
-  movieApi: MovieApiProvider;
-  movieApiKey: string;
+  rapidApi: string; // RapidAPI key for IMDb
 }
 
 export interface GamePreferences {
@@ -36,8 +35,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   apiKeys: {
     gemini: '',
-    movieApi: 'tmdb',
-    movieApiKey: '',
+    rapidApi: '',
   },
   preferences: {
     language: 'en',

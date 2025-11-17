@@ -16,7 +16,7 @@ export default function SettingsPage() {
   const { showToast } = useUIStore();
 
   const [apiKeys, setApiKeys] = useState({
-    movieApiKey: settings.apiKeys.movieApiKey,
+    rapidApi: settings.apiKeys.rapidApi,
     gemini: settings.apiKeys.gemini,
   });
 
@@ -32,15 +32,15 @@ export default function SettingsPage() {
   const handleValidateMovieApi = async () => {
     setIsValidating(true);
     try {
-      const isValid = await movieService.validateApiKey(apiKeys.movieApiKey);
+      const isValid = await movieService.validateApiKey(apiKeys.rapidApi);
       if (isValid) {
-        showToast('TMDb API key is valid!', 'success');
-        settings.updateApiKeys({ movieApiKey: apiKeys.movieApiKey });
+        showToast('RapidAPI key is valid!', 'success');
+        settings.updateApiKeys({ rapidApi: apiKeys.rapidApi });
       } else {
-        showToast('Invalid TMDb API key', 'error');
+        showToast('Invalid RapidAPI key', 'error');
       }
     } catch (error) {
-      showToast('Failed to validate TMDb API key', 'error');
+      showToast('Failed to validate RapidAPI key', 'error');
     }
     setIsValidating(false);
   };
@@ -76,17 +76,17 @@ export default function SettingsPage() {
             <h2 className="text-2xl font-semibold mb-6">API Configuration</h2>
 
             <div className="space-y-6">
-              {/* TMDb API Key */}
+              {/* RapidAPI Key */}
               <div>
                 <Input
-                  label="TMDb API Key"
+                  label="RapidAPI Key (IMDb API)"
                   type="password"
-                  value={apiKeys.movieApiKey}
+                  value={apiKeys.rapidApi}
                   onChange={(e) =>
-                    setApiKeys({ ...apiKeys, movieApiKey: e.target.value })
+                    setApiKeys({ ...apiKeys, rapidApi: e.target.value })
                   }
-                  placeholder="Enter your TMDb API key"
-                  helperText="Get your free API key from https://www.themoviedb.org/settings/api"
+                  placeholder="Enter your RapidAPI key"
+                  helperText="Get API key from RapidAPI for IMDb API (imdb232.p.rapidapi.com)"
                 />
                 <Button
                   size="sm"
@@ -217,6 +217,23 @@ export default function SettingsPage() {
                 </label>
               </div>
             </div>
+          </div>
+
+          {/* Cache Management */}
+          <div className="glass-dark p-8 rounded-xl mb-8">
+            <h2 className="text-2xl font-semibold mb-4">Cache Management</h2>
+            <p className="text-gray-400 mb-4">
+              Movie data is cached locally to save API calls. Clear cache if you want to fetch fresh data.
+            </p>
+            <Button
+              variant="danger"
+              onClick={() => {
+                movieService.clearCache();
+                showToast('Cache cleared successfully!', 'success');
+              }}
+            >
+              Clear Movie Cache
+            </Button>
           </div>
 
           {/* Action Buttons */}

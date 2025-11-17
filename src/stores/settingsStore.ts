@@ -60,7 +60,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   hasValidApiKeys: () => {
     const state = get();
-    return !!(state.apiKeys.movieApiKey &&
+    return !!(state.apiKeys.rapidApi &&
               (state.preferences.enableImages ? state.apiKeys.gemini : true));
   },
 }));

@@ -1,11 +1,39 @@
 import axios from 'axios';
-import { Movie, TMDbMovie, TMDbMovieDetails, TMDbKeywordsResponse } from '@/types/movie.types';
+import { Movie } from '@/types/movie.types';
 
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
+const RAPIDAPI_BASE_URL = 'https://imdb232.p.rapidapi.com/api';
+
+interface IMDbAutocompleteResult {
+  d: Array<{
+    i?: {
+      imageUrl: string;
+    };
+    id: string;
+    l: string; // title
+    q?: string; // type (e.g., "feature")
+    rank?: number;
+    s?: string; // stars/cast
+    y?: number; // year
+  }>;
+}
+
+interface IMDbKeyword {
+  keyword: string;
+}
+
+// Cache structure in localStorage
+interface MovieCache {
+  [movieId: string]: {
+    movie: Movie;
+    timestamp: number;
+    keywords: string[];
+  };
+}
 
 class MovieService {
   private apiKey: string = '';
+  private cacheKey = 'movie-quiz-cache';
+  private cacheExpiry = 7 * 24 * 60 * 60 * 1000; // 7 days
 
   setApiKey(key: string): void {
     this.apiKey = key;
@@ -13,138 +41,222 @@ class MovieService {
 
   private getHeaders() {
     return {
-      Authorization: `Bearer ${this.apiKey}`,
-      'Content-Type': 'application/json',
+      'X-Rapidapi-Key': this.apiKey,
+      'X-Rapidapi-Host': 'imdb232.p.rapidapi.com',
     };
   }
 
-  async getPopularMovies(page: number = 1): Promise<TMDbMovie[]> {
+  // Cache management
+  private getCache(): MovieCache {
     try {
-      const response = await axios.get(`${TMDB_BASE_URL}/movie/popular`, {
-        headers: this.getHeaders(),
-        params: { page },
-      });
-      return response.data.results;
+      const cached = localStorage.getItem(this.cacheKey);
+      return cached ? JSON.parse(cached) : {};
     } catch (error) {
-      console.error('Error fetching popular movies:', error);
-      throw new Error('Failed to fetch popular movies');
+      console.error('Error reading cache:', error);
+      return {};
     }
   }
 
-  async getMovieDetails(movieId: number): Promise<TMDbMovieDetails> {
+  private saveToCache(movieId: string, movie: Movie, keywords: string[]): void {
     try {
-      const response = await axios.get(`${TMDB_BASE_URL}/movie/${movieId}`, {
-        headers: this.getHeaders(),
-      });
-      return response.data;
+      const cache = this.getCache();
+      cache[movieId] = {
+        movie,
+        keywords,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(this.cacheKey, JSON.stringify(cache));
     } catch (error) {
-      console.error('Error fetching movie details:', error);
-      throw new Error('Failed to fetch movie details');
+      console.error('Error saving to cache:', error);
     }
   }
 
-  async getMovieKeywords(movieId: number): Promise<string[]> {
+  private getFromCache(movieId: string): { movie: Movie; keywords: string[] } | null {
+    const cache = this.getCache();
+    const cached = cache[movieId];
+
+    if (!cached) return null;
+
+    // Check if cache is expired
+    if (Date.now() - cached.timestamp > this.cacheExpiry) {
+      return null;
+    }
+
+    return {
+      movie: cached.movie,
+      keywords: cached.keywords,
+    };
+  }
+
+  clearCache(): void {
     try {
-      const response = await axios.get<TMDbKeywordsResponse>(
-        `${TMDB_BASE_URL}/movie/${movieId}/keywords`,
+      localStorage.removeItem(this.cacheKey);
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+    }
+  }
+
+  async searchMovies(query: string): Promise<Array<{ id: string; title: string; year?: number }>> {
+    try {
+      const response = await axios.get<IMDbAutocompleteResult>(
+        `${RAPIDAPI_BASE_URL}/autocomplete`,
         {
           headers: this.getHeaders(),
+          params: { q: query },
         }
       );
-      return response.data.keywords
-        .map((kw) => kw.name)
-        .filter((name) => !name.includes('-')); // Filter out hyphenated keywords
-    } catch (error) {
-      console.error('Error fetching movie keywords:', error);
-      return [];
-    }
-  }
 
-  async searchMovies(query: string): Promise<TMDbMovie[]> {
-    try {
-      const response = await axios.get(`${TMDB_BASE_URL}/search/movie`, {
-        headers: this.getHeaders(),
-        params: { query },
-      });
-      return response.data.results;
+      return response.data.d
+        .filter((item) => item.q === 'feature' || item.q === 'TV movie') // Only movies
+        .map((item) => ({
+          id: item.id,
+          title: item.l,
+          year: item.y,
+        }));
     } catch (error) {
       console.error('Error searching movies:', error);
       throw new Error('Failed to search movies');
     }
   }
 
-  async getRandomMovie(genreIds?: number[]): Promise<Movie> {
+  async getMovieKeywords(movieId: string): Promise<string[]> {
     try {
-      // Get random page between 1-10
-      const randomPage = Math.floor(Math.random() * 10) + 1;
+      const response = await axios.get<IMDbKeyword[]>(
+        `${RAPIDAPI_BASE_URL}/title/get-keywords`,
+        {
+          headers: this.getHeaders(),
+          params: { tt: movieId },
+        }
+      );
 
-      const params: any = { page: randomPage };
-      if (genreIds && genreIds.length > 0) {
-        params.with_genres = genreIds.join(',');
-      }
-
-      const response = await axios.get(`${TMDB_BASE_URL}/discover/movie`, {
-        headers: this.getHeaders(),
-        params,
-      });
-
-      const movies = response.data.results;
-      if (!movies || movies.length === 0) {
-        throw new Error('No movies found');
-      }
-
-      // Select random movie from the page
-      const randomMovie = movies[Math.floor(Math.random() * movies.length)];
-
-      // Get detailed info
-      const [details, keywords] = await Promise.all([
-        this.getMovieDetails(randomMovie.id),
-        this.getMovieKeywords(randomMovie.id),
-      ]);
-
-      return this.mapToMovie(details, keywords);
+      // Filter out keywords with hyphens
+      return response.data
+        .map((kw) => kw.keyword)
+        .filter((keyword) => !keyword.includes('-'))
+        .slice(0, 20); // Limit to 20
     } catch (error) {
-      console.error('Error getting random movie:', error);
-      throw new Error('Failed to get random movie');
+      console.error('Error fetching keywords:', error);
+      return [];
     }
   }
 
-  private mapToMovie(details: TMDbMovieDetails, keywords: string[]): Movie {
-    return {
-      id: details.id.toString(),
-      title: details.title,
-      year: new Date(details.release_date).getFullYear(),
-      description: details.overview,
-      keywords: keywords.slice(0, 20), // Limit to 20 keywords
-      genres: details.genres.map((g) => g.name),
-      posterUrl: details.poster_path
-        ? `${TMDB_IMAGE_BASE}/w500${details.poster_path}`
-        : '',
-      backdropUrl: details.backdrop_path
-        ? `${TMDB_IMAGE_BASE}/original${details.backdrop_path}`
-        : undefined,
-      rating: Math.round(details.vote_average * 10) / 10,
-      imdbId: details.imdb_id,
-      voteCount: details.vote_count,
-      runtime: details.runtime,
-      releaseDate: details.release_date,
-    };
+  async getMovieDetails(movieId: string): Promise<Movie> {
+    // Check cache first
+    const cached = this.getFromCache(movieId);
+    if (cached) {
+      console.log('Using cached movie data for', movieId);
+      return cached.movie;
+    }
+
+    try {
+      // Fetch keywords in parallel with movie search
+      const [keywords, searchResults] = await Promise.all([
+        this.getMovieKeywords(movieId),
+        this.searchMovies(movieId), // Get basic info from autocomplete
+      ]);
+
+      // Find the movie in search results
+      const movieInfo = searchResults.find((m) => m.id === movieId);
+
+      if (!movieInfo) {
+        throw new Error('Movie not found');
+      }
+
+      const movie: Movie = {
+        id: movieId,
+        title: movieInfo.title,
+        year: movieInfo.year || 0,
+        description: 'Plot description coming soon...', // IMDb API doesn't provide plot in free tier
+        keywords: keywords,
+        genres: [],
+        posterUrl: '',
+        rating: 0,
+        imdbId: movieId,
+      };
+
+      // Cache the result
+      this.saveToCache(movieId, movie, keywords);
+
+      return movie;
+    } catch (error) {
+      console.error('Error getting movie details:', error);
+      throw new Error('Failed to get movie details');
+    }
+  }
+
+  async getRandomMovie(): Promise<Movie> {
+    // List of popular movie IDs from various franchises
+    const popularMovieIds = [
+      'tt0111161', // The Shawshank Redemption
+      'tt0068646', // The Godfather
+      'tt0468569', // The Dark Knight
+      'tt0108052', // Schindler's List
+      'tt0167260', // The Lord of the Rings: The Return of the King
+      'tt0110912', // Pulp Fiction
+      'tt0109830', // Forrest Gump
+      'tt0137523', // Fight Club
+      'tt0120737', // The Lord of the Rings: The Fellowship of the Ring
+      'tt0167261', // The Lord of the Rings: The Two Towers
+      'tt0080684', // Star Wars: Episode V - The Empire Strikes Back
+      'tt0133093', // The Matrix
+      'tt0099685', // Goodfellas
+      'tt0073486', // One Flew Over the Cuckoo\'s Nest
+      'tt0047478', // Seven Samurai
+      'tt0114369', // Se7en
+      'tt0317248', // City of God
+      'tt0076759', // Star Wars: Episode IV - A New Hope
+      'tt0102926', // The Silence of the Lambs
+      'tt0118799', // Life Is Beautiful
+      'tt0120815', // Saving Private Ryan
+      'tt0816692', // Interstellar
+      'tt0054215', // Psycho
+      'tt0120689', // The Green Mile
+      'tt0110413', // Léon: The Professional
+      'tt0103064', // Terminator 2: Judgment Day
+      'tt0088763', // Back to the Future
+      'tt0407887', // The Departed
+      'tt0482571', // The Prestige
+      'tt0034583', // Casablanca
+      'tt0095327', // Grave of the Fireflies
+      'tt0245429', // Spirited Away
+      'tt1375666', // Inception
+      'tt0078788', // Apocalypse Now
+      'tt0114814', // The Usual Suspects
+      'tt0172495', // Gladiator
+      'tt0110357', // The Lion King
+      'tt0095765', // Cinema Paradiso
+      'tt0816711', // District 9
+      'tt0064116', // Once Upon a Time in the West
+      'tt0027977', // Modern Times
+      'tt0253474', // The Pianist
+      'tt0078748', // Alien
+      'tt0910970', // WALL·E
+      'tt0050825', // Paths of Glory
+      'tt0209144', // Memento
+      'tt0090605', // Aliens
+      'tt0211915', // Amélie
+      'tt0405094', // The Lives of Others
+      'tt1675434', // The Intouchables
+      'tt0338013', // Eternal Sunshine of the Spotless Mind
+      'tt0087843', // Once Upon a Time in America
+      'tt0082971', // Raiders of the Lost Ark
+      'tt0082096', // Das Boot
+    ];
+
+    // Pick random movie ID
+    const randomId = popularMovieIds[Math.floor(Math.random() * popularMovieIds.length)];
+
+    return this.getMovieDetails(randomId);
   }
 
   async validateApiKey(key: string): Promise<boolean> {
     try {
       this.setApiKey(key);
-      await axios.get(`${TMDB_BASE_URL}/configuration`, {
-        headers: this.getHeaders(),
-      });
+      await this.searchMovies('test');
       return true;
     } catch (error) {
       return false;
     }
-  }
-
-  getImageUrl(path: string, size: 'w200' | 'w500' | 'original' = 'w500'): string {
-    return `${TMDB_IMAGE_BASE}/${size}${path}`;
   }
 }
 
