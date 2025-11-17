@@ -1,6 +1,6 @@
 # 🎬 Movie Quiz
 
-An interactive web-based movie quiz game powered by AI-generated images and movie data from TMDb. Test your movie knowledge with visual clues, keywords, and descriptions!
+An interactive web-based movie quiz game powered by AI-generated images and IMDb movie data. Test your movie knowledge with visual clues, keywords, and descriptions!
 
 ![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![React](https://img.shields.io/badge/React-19.2.0-61DAFB?logo=react)
@@ -15,7 +15,8 @@ An interactive web-based movie quiz game powered by AI-generated images and movi
 - **Modern UI**: Beautiful dark mode interface with glassmorphism and smooth animations
 - **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
 - **Local Storage**: All settings and API keys are stored locally in your browser
-- **70+ Curated Movies**: Hand-picked collection from popular franchises (Marvel, Star Wars, Harry Potter, etc.)
+- **Movie Caching**: Fetched movie data is cached for 7 days to save API calls
+- **50+ Popular Movies**: Curated collection from IMDb's top-rated films
 
 ## 🚀 Quick Start
 
@@ -48,9 +49,9 @@ You'll need API keys for:
 
 5. **Configure API Keys**
    - Go to Settings page
-   - Enter your TMDb API key
+   - Enter your RapidAPI key (for IMDb API: imdb232.p.rapidapi.com)
    - Enter your Gemini API key
-   - Click "Test Connection" to validate
+   - Click "Test Connection" to validate each key
    - Save settings
 
 6. **Start Playing!**
