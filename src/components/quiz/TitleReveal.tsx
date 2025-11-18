@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import confetti from 'canvas-confetti';
 import { useQuizStore } from '@/stores/quizStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import TypingText from '@/components/shared/TypingText';
@@ -9,7 +10,7 @@ import { movieService } from '@/services/movieService';
 
 export default function TitleReveal() {
   const navigate = useNavigate();
-  const { currentMovie, resetQuiz } = useQuizStore();
+  const { currentMovie, resetQuiz, isCorrectGuess } = useQuizStore();
   const { enableTypingEffect, typingSpeed } = useSettingsStore(
     (state) => state.preferences
   );
@@ -19,6 +20,17 @@ export default function TitleReveal() {
     certificate: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isCorrectGuess) {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#0ea5e9', '#38bdf8', '#ffffff'], // Primary colors
+      });
+    }
+  }, [isCorrectGuess]);
 
   useEffect(() => {
     if (currentMovie) {
@@ -62,10 +74,12 @@ export default function TitleReveal() {
         transition={{ type: 'spring', delay: 0.2 }}
         className="text-6xl mb-4"
       >
-        🎉
+        {isCorrectGuess ? '🎉' : '🎬'}
       </motion.div>
 
-      <h2 className="text-4xl font-bold mb-4">The Movie Was...</h2>
+      <h2 className="text-4xl font-bold mb-4">
+        {isCorrectGuess ? 'Correct! The Movie Was...' : 'The Movie Was...'}
+      </h2>
 
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}

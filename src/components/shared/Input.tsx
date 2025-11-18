@@ -4,12 +4,13 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   helperText?: string;
+  shake?: boolean;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helperText, className = '', ...props }, ref) => {
+  ({ label, error, helperText, shake, className = '', ...props }, ref) => {
     return (
-      <div className="w-full">
+      <div className={`w-full ${shake ? 'animate-shake' : ''}`}>
         {label && (
           <label className="block text-sm font-medium text-gray-300 mb-2">
             {label}

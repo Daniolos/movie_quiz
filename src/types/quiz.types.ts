@@ -27,6 +27,7 @@ export interface QuizState {
   quizType: QuizType | null;
   currentMovie: Movie | null;
   generatedImages: GeneratedImages;
+  isGeneratingImage: boolean;
   phase: QuizPhase;
   currentKeywordIndex: number;
   revealedKeywords: string[];

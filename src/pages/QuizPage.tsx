@@ -24,6 +24,7 @@ export default function QuizPage() {
     quizType,
     setCurrentMovie,
     setGeneratedImage,
+    setIsGeneratingImage,
     setQuotes,
     setTriviaItems,
     setPhase,
@@ -104,21 +105,23 @@ export default function QuizPage() {
         setTriviaItems(triviaItems);
       }
 
-      // Generate AI image if enabled (for keywords quiz)
+      // Generate AI image if enabled (for keywords quiz) - Non-blocking
       if (settings.preferences.enableImages && quizType === 'keywords') {
-        try {
-          setLoading(true, 'Generating AI image...');
-          const mainImage = await geminiService.generateMovieImage(
-            movie.title,
-            movie.genres[0] || 'Drama'
-          );
+        setIsGeneratingImage(true);
+        // Don't await - let it run in background
+        geminiService.generateMovieImage(
+          movie.title,
+          movie.genres[0] || 'Drama'
+        ).then((mainImage) => {
           if (mainImage) {
             setGeneratedImage('main', mainImage);
           }
-        } catch (error) {
+        }).catch((error) => {
           console.error('Image generation failed:', error);
           showToast('Failed to generate images, continuing without them', 'warning');
-        }
+        }).finally(() => {
+          setIsGeneratingImage(false);
+        });
       }
 
       setLoading(false);
