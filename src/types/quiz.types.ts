@@ -1,6 +1,8 @@
 import { Movie } from './movie.types';
 
-export type QuizPhase = 'loading' | 'image' | 'keywords' | 'description' | 'title' | 'results';
+export type QuizType = 'keywords' | 'quotes' | 'trivia';
+
+export type QuizPhase = 'loading' | 'image' | 'keywords' | 'quotes' | 'trivia' | 'description' | 'title' | 'results';
 
 export interface GeneratedImages {
   main?: string;
@@ -8,12 +10,30 @@ export interface GeneratedImages {
   keywords?: Record<string, string>;
 }
 
+export interface Quote {
+  id: string;
+  text: string;
+  character: string;
+}
+
+export interface TriviaItem {
+  id: string;
+  question: string;
+  correctAnswer: string;
+  options: string[];
+}
+
 export interface QuizState {
+  quizType: QuizType | null;
   currentMovie: Movie | null;
   generatedImages: GeneratedImages;
   phase: QuizPhase;
   currentKeywordIndex: number;
   revealedKeywords: string[];
+  quotes: Quote[];
+  currentQuoteIndex: number;
+  triviaItems: TriviaItem[];
+  currentTriviaIndex: number;
   userGuess: string | null;
   isCorrectGuess: boolean | null;
   startTime: number | null;

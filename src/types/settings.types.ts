@@ -5,6 +5,7 @@ export type Difficulty = 'easy' | 'medium' | 'hard';
 export interface APIKeys {
   gemini: string;
   rapidApi: string; // RapidAPI key for IMDb
+  openRouter: string; // OpenRouter API key for AI-generated options
 }
 
 export interface GamePreferences {
@@ -36,6 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   apiKeys: {
     gemini: '',
     rapidApi: '',
+    openRouter: '',
   },
   preferences: {
     language: 'en',

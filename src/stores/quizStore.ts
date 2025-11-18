@@ -1,15 +1,21 @@
 import { create } from 'zustand';
-import { QuizState, QuizPhase } from '@/types/quiz.types';
+import { QuizState, QuizPhase, QuizType, Quote, TriviaItem } from '@/types/quiz.types';
 import { Movie } from '@/types/movie.types';
 
 interface QuizStore extends QuizState {
   // Actions
+  setQuizType: (type: QuizType) => void;
   setCurrentMovie: (movie: Movie) => void;
   setGeneratedImage: (type: 'main' | 'description', image: string) => void;
   setPhase: (phase: QuizPhase) => void;
   nextKeyword: () => void;
+  setQuotes: (quotes: Quote[]) => void;
+  nextQuote: () => void;
+  setTriviaItems: (items: TriviaItem[]) => void;
+  nextTrivia: () => void;
   setUserGuess: (guess: string) => void;
   checkGuess: () => void;
+  checkTriviaAnswer: (selectedAnswer: string) => void;
   startQuiz: () => void;
   endQuiz: () => void;
   resetQuiz: () => void;
@@ -17,11 +23,16 @@ interface QuizStore extends QuizState {
 }
 
 const initialState: QuizState = {
+  quizType: null,
   currentMovie: null,
   generatedImages: {},
   phase: 'loading',
   currentKeywordIndex: 0,
   revealedKeywords: [],
+  quotes: [],
+  currentQuoteIndex: 0,
+  triviaItems: [],
+  currentTriviaIndex: 0,
   userGuess: null,
   isCorrectGuess: null,
   startTime: null,
@@ -32,6 +43,10 @@ const initialState: QuizState = {
 
 export const useQuizStore = create<QuizStore>((set, get) => ({
   ...initialState,
+
+  setQuizType: (type) => {
+    set({ quizType: type });
+  },
 
   setCurrentMovie: (movie) => {
     set({ currentMovie: movie });
@@ -67,6 +82,27 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
     });
   },
 
+  setQuotes: (quotes) => {
+    set({ quotes });
+  },
+
+  nextQuote: () => {
+    set((state) => ({
+      currentQuoteIndex: state.currentQuoteIndex + 1,
+      hintsUsed: state.hintsUsed + 1,
+    }));
+  },
+
+  setTriviaItems: (items) => {
+    set({ triviaItems: items });
+  },
+
+  nextTrivia: () => {
+    set((state) => ({
+      currentTriviaIndex: state.currentTriviaIndex + 1,
+    }));
+  },
+
   setUserGuess: (guess) => {
     set({ userGuess: guess });
   },
@@ -93,6 +129,23 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
     set({
       isCorrectGuess: isCorrect,
       score: finalScore,
+    });
+  },
+
+  checkTriviaAnswer: (selectedAnswer) => {
+    const state = get();
+    const currentTrivia = state.triviaItems[state.currentTriviaIndex];
+
+    if (!currentTrivia) return;
+
+    const isCorrect = selectedAnswer === currentTrivia.correctAnswer;
+
+    const baseScore = 200; // Lower score per trivia question
+    const finalScore = isCorrect ? baseScore : 0;
+
+    set({
+      isCorrectGuess: isCorrect,
+      score: state.score + finalScore,
     });
   },
 

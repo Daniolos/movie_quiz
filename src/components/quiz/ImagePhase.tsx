@@ -29,7 +29,7 @@ export default function ImagePhase() {
           <img
             src={generatedImages.main}
             alt="Movie clue"
-            className="w-full rounded-2xl shadow-2xl"
+            className="w-full max-h-[60vh] object-contain rounded-2xl shadow-2xl"
           />
         </motion.div>
       ) : (
