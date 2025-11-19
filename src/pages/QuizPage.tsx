@@ -62,11 +62,47 @@ export default function QuizPage() {
       const movie = await movieService.getRandomMovie();
       setCurrentMovie(movie);
 
+      // Sanitize keywords for keywords quiz
+      if (quizType === 'keywords') {
+        setLoading(true, 'Optimizing keywords...');
+        const sanitizedKeywords = await movieService.sanitizeMovieKeywords(
+          movie.imdbId || movie.id,
+          openRouterService
+        );
+        // Update the movie with sanitized keywords
+        movie.keywords = sanitizedKeywords;
+        setCurrentMovie(movie);
+      }
+
       // Load quiz type specific data
       if (quizType === 'quotes') {
         setLoading(true, 'Loading movie quotes...');
         const quotesData = await movieService.getMovieQuotes(movie.imdbId || movie.id);
-        const quotes: Quote[] = quotesData.map((q) => ({
+
+        // If no quotes available, try to get another movie (retry up to 3 times)
+        let retries = 0;
+        let currentMovie = movie;
+        let currentQuotesData = quotesData;
+
+        while (currentQuotesData.length === 0 && retries < 3) {
+          retries++;
+          setLoading(true, `Finding a movie with quotes... (attempt ${retries + 1})`);
+          currentMovie = await movieService.getRandomMovie();
+          currentQuotesData = await movieService.getMovieQuotes(currentMovie.imdbId || currentMovie.id);
+        }
+
+        if (currentQuotesData.length === 0) {
+          showToast('Could not find a movie with available quotes. Please try again.', 'error');
+          navigate('/');
+          return;
+        }
+
+        // Update the movie if we found a different one
+        if (currentMovie.id !== movie.id) {
+          setCurrentMovie(currentMovie);
+        }
+
+        const quotes: Quote[] = currentQuotesData.map((q) => ({
           id: q.id,
           text: q.text,
           character: q.character,
@@ -76,30 +112,34 @@ export default function QuizPage() {
         setLoading(true, 'Loading movie trivia...');
         const triviaData = await movieService.getMovieTrivia(movie.imdbId || movie.id);
 
-        // Generate trivia items with AI-powered wrong answers
+        // Generate trivia items with AI-powered questions (without revealing movie title)
         const triviaItems: TriviaItem[] = [];
-        for (const trivia of triviaData) {
+        for (const trivia of triviaData.slice(0, 5)) {
           try {
-            setLoading(true, `Generating trivia options... (${triviaItems.length + 1}/${triviaData.length})`);
-            const wrongAnswers = await openRouterService.generateWrongAnswers(
+            setLoading(true, `Generating trivia questions... (${triviaItems.length + 1}/5)`);
+
+            const triviaQuestion = await openRouterService.generateTriviaQuestion(
               trivia.text,
-              movie.title,
               movie.title
             );
 
-            const allOptions = [movie.title, ...wrongAnswers];
-            // Shuffle options
-            const shuffledOptions = allOptions.sort(() => Math.random() - 0.5);
-
-            triviaItems.push({
-              id: trivia.id,
-              question: trivia.text,
-              correctAnswer: movie.title,
-              options: shuffledOptions,
-            });
+            if (triviaQuestion) {
+              triviaItems.push({
+                id: trivia.id,
+                question: triviaQuestion.question,
+                correctAnswer: triviaQuestion.correctAnswer,
+                options: triviaQuestion.options,
+              });
+            }
           } catch (error) {
-            console.error('Failed to generate trivia options:', error);
+            console.error('Failed to generate trivia question:', error);
           }
+        }
+
+        if (triviaItems.length === 0) {
+          showToast('Failed to generate trivia questions. Please try again.', 'error');
+          navigate('/');
+          return;
         }
 
         setTriviaItems(triviaItems);
@@ -133,6 +173,9 @@ export default function QuizPage() {
         } else {
           setPhase('keywords');
         }
+        // Auto-reveal first keyword
+        const { nextKeyword } = useQuizStore.getState();
+        nextKeyword();
       } else if (quizType === 'quotes') {
         setPhase('quotes');
       } else if (quizType === 'trivia') {
