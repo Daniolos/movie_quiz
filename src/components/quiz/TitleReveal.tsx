@@ -66,18 +66,18 @@ export default function TitleReveal() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-8 text-center"
+      className="space-y-6 text-center max-h-[85vh] overflow-hidden"
     >
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: 'spring', delay: 0.2 }}
-        className="text-6xl mb-4"
+        className="text-5xl mb-2"
       >
         {isCorrectGuess ? '🎉' : '🎬'}
       </motion.div>
 
-      <h2 className="text-4xl font-bold mb-4">
+      <h2 className="text-3xl font-bold mb-2">
         {isCorrectGuess ? 'Correct! The Movie Was...' : 'The Movie Was...'}
       </h2>
 
@@ -85,9 +85,9 @@ export default function TitleReveal() {
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="glass-dark p-8 rounded-xl max-w-3xl mx-auto"
+        className="glass-dark p-6 rounded-xl max-w-3xl mx-auto"
       >
-        <h1 className="text-5xl font-bold gradient-text mb-4">
+        <h1 className="text-4xl font-bold gradient-text mb-2">
           {enableTypingEffect ? (
             <TypingText text={currentMovie.title} speed={typingSpeed} />
           ) : (
@@ -95,83 +95,94 @@ export default function TitleReveal() {
           )}
         </h1>
 
-        <p className="text-xl text-gray-400">({currentMovie.year})</p>
+        <p className="text-lg text-gray-400">({currentMovie.year})</p>
       </motion.div>
 
-      {/* Movie Poster */}
-      {currentMovie.posterUrl && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="max-w-md mx-auto"
-        >
-          <img
-            src={currentMovie.posterUrl}
-            alt={currentMovie.title}
-            className="w-full max-h-[50vh] object-contain rounded-xl shadow-2xl"
-          />
-        </motion.div>
-      )}
-
-      {/* Movie Details */}
+      {/* Movie Details and Poster - Side by Side */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        className="glass p-6 rounded-xl max-w-2xl mx-auto"
+        transition={{ delay: 0.8 }}
+        className="glass p-6 rounded-xl max-w-4xl mx-auto"
       >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-6">
-          <div>
-            <div className="text-2xl font-bold text-primary-400">
-              {currentMovie.rating ? currentMovie.rating.toFixed(1) : 'N/A'}
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Movie Poster */}
+          {currentMovie.posterUrl && (
+            <div className="flex-shrink-0 md:w-48">
+              <img
+                src={currentMovie.posterUrl}
+                alt={currentMovie.title}
+                className="w-full h-auto max-h-64 object-cover rounded-lg shadow-lg"
+              />
             </div>
-            <div className="text-sm text-gray-400">IMDb Rating</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-primary-400">
-              {currentMovie.year || 'N/A'}
+          )}
+
+          {/* Details */}
+          <div className="flex-1 space-y-4">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 gap-3 text-left">
+              {currentMovie.rating && currentMovie.rating > 0 && (
+                <div>
+                  <div className="text-xl font-bold text-primary-400">
+                    ⭐ {currentMovie.rating.toFixed(1)}
+                  </div>
+                  <div className="text-xs text-gray-400">IMDb Rating</div>
+                </div>
+              )}
+              {currentMovie.year && (
+                <div>
+                  <div className="text-xl font-bold text-primary-400">
+                    📅 {currentMovie.year}
+                  </div>
+                  <div className="text-xs text-gray-400">Year</div>
+                </div>
+              )}
+              {currentMovie.genres && currentMovie.genres.length > 0 && (
+                <div>
+                  <div className="text-xl font-bold text-primary-400">
+                    🎭 {currentMovie.genres.slice(0, 2).join(', ')}
+                  </div>
+                  <div className="text-xs text-gray-400">Genre{currentMovie.genres.length > 1 ? 's' : ''}</div>
+                </div>
+              )}
+              {currentMovie.runtime && currentMovie.runtime > 0 && (
+                <div>
+                  <div className="text-xl font-bold text-primary-400">
+                    ⏱️ {currentMovie.runtime}min
+                  </div>
+                  <div className="text-xs text-gray-400">Runtime</div>
+                </div>
+              )}
             </div>
-            <div className="text-sm text-gray-400">Year</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-primary-400">
-              {currentMovie.genres && currentMovie.genres.length > 0 ? currentMovie.genres[0] : 'N/A'}
-            </div>
-            <div className="text-sm text-gray-400">Genre</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-primary-400">
-              {currentMovie.runtime ? `${currentMovie.runtime}min` : 'N/A'}
-            </div>
-            <div className="text-sm text-gray-400">Runtime</div>
+
+            {/* Plot */}
+            {!loading && overview?.plot && (
+              <div className="border-t border-gray-700 pt-3">
+                <h3 className="text-sm font-semibold mb-1 text-left">Plot</h3>
+                <p className="text-gray-300 text-sm leading-relaxed text-left line-clamp-4">
+                  {overview.plot}
+                </p>
+              </div>
+            )}
+
+            {/* Certificate */}
+            {!loading && overview?.certificate && (
+              <div className="text-left">
+                <span className="inline-block px-2 py-1 bg-gray-700 rounded-full text-xs text-gray-300">
+                  Rated: {overview.certificate}
+                </span>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Plot */}
-        {!loading && overview?.plot && (
-          <div className="border-t border-gray-700 pt-4">
-            <h3 className="text-lg font-semibold mb-2">Plot</h3>
-            <p className="text-gray-300 text-sm leading-relaxed">{overview.plot}</p>
-          </div>
-        )}
-
-        {/* Certificate */}
-        {!loading && overview?.certificate && (
-          <div className="mt-3 text-center">
-            <span className="inline-block px-3 py-1 bg-gray-700 rounded-full text-sm text-gray-300">
-              Rated: {overview.certificate}
-            </span>
-          </div>
-        )}
       </motion.div>
 
       {/* Actions */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.2 }}
-        className="flex justify-center space-x-4"
+        transition={{ delay: 1 }}
+        className="flex justify-center space-x-4 pt-2"
       >
         <Button onClick={handlePlayAgain} size="lg">
           Play Again

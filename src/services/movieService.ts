@@ -202,6 +202,7 @@ interface MovieCache {
   [movieId: string]: {
     movie: Movie;
     keywords: string[];
+    sanitized?: boolean; // Flag to indicate if keywords are sanitized
   };
 }
 
@@ -231,27 +232,28 @@ class MovieService {
     }
   }
 
-  private saveToCache(movieId: string, movie: Movie, keywords: string[]): void {
+  private saveToCache(movieId: string, movie: Movie, keywords: string[], sanitized: boolean = false): void {
     try {
       const cache = this.getCache();
       cache[movieId] = {
         movie,
         keywords,
+        sanitized,
       };
       localStorage.setItem(this.cacheKey, JSON.stringify(cache));
-      console.log(`Cached movie: ${movie.title} (${movieId})`);
+      console.log(`Cached movie: ${movie.title} (${movieId}) - Sanitized: ${sanitized}`);
     } catch (error) {
       console.error('Error saving to cache:', error);
     }
   }
 
-  private getFromCache(movieId: string): { movie: Movie; keywords: string[] } | null {
+  private getFromCache(movieId: string): { movie: Movie; keywords: string[]; sanitized?: boolean } | null {
     const cache = this.getCache();
     const cached = cache[movieId];
 
     if (!cached) return null;
 
-    console.log(`Using cached data for: ${cached.movie.title}`);
+    console.log(`Using cached data for: ${cached.movie.title} - Sanitized: ${cached.sanitized || false}`);
     return cached;
   }
 
@@ -692,6 +694,53 @@ class MovieService {
     const randomId = popularMovieIds[Math.floor(Math.random() * popularMovieIds.length)];
 
     return this.getMovieDetails(randomId);
+  }
+
+  async sanitizeMovieKeywords(
+    movieId: string,
+    openRouterService: any
+  ): Promise<string[]> {
+    try {
+      // Check if already sanitized in cache
+      const cached = this.getFromCache(movieId);
+      if (cached?.sanitized) {
+        console.log('[MovieService] Keywords already sanitized for:', cached.movie.title);
+        return cached.keywords;
+      }
+
+      // Get the movie details (which includes keywords)
+      let movie: Movie;
+      let rawKeywords: string[];
+
+      if (cached) {
+        movie = cached.movie;
+        rawKeywords = cached.keywords;
+      } else {
+        // Fetch the movie if not cached
+        movie = await this.getMovieDetails(movieId);
+        rawKeywords = movie.keywords;
+      }
+
+      // Sanitize keywords using LLM
+      console.log('[MovieService] Sanitizing keywords for:', movie.title);
+      const sanitizedKeywords = await openRouterService.sanitizeKeywords(
+        rawKeywords,
+        movie.title
+      );
+
+      // Update the movie object
+      movie.keywords = sanitizedKeywords;
+
+      // Update cache with sanitized keywords
+      this.saveToCache(movieId, movie, sanitizedKeywords, true);
+
+      return sanitizedKeywords;
+    } catch (error) {
+      console.error('[MovieService] Error sanitizing keywords:', error);
+      // Return original keywords if sanitization fails
+      const cached = this.getFromCache(movieId);
+      return cached?.keywords || [];
+    }
   }
 
   async validateApiKey(key: string): Promise<boolean> {

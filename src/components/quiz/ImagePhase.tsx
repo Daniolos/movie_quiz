@@ -3,7 +3,12 @@ import { useQuizStore } from '@/stores/quizStore';
 import Button from '@/components/shared/Button';
 
 export default function ImagePhase() {
-  const { generatedImages, skipToPhase, isGeneratingImage } = useQuizStore();
+  const { generatedImages, skipToPhase, nextKeyword, isGeneratingImage } = useQuizStore();
+
+  const handleShowKeywords = () => {
+    nextKeyword(); // Auto-reveal first keyword
+    skipToPhase('keywords');
+  };
 
   return (
     <motion.div
@@ -44,7 +49,7 @@ export default function ImagePhase() {
 
       {/* Action */}
       <div className="flex justify-center space-x-4">
-        <Button onClick={() => skipToPhase('keywords')} size="lg">
+        <Button onClick={handleShowKeywords} size="lg">
           Show Keywords
         </Button>
       </div>
