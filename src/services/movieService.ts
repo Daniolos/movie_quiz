@@ -257,24 +257,6 @@ class MovieService {
     return cached;
   }
 
-  // Update cached movie with sanitized keywords
-  private updateCacheWithSanitizedKeywords(movieId: string, sanitizedKeywords: string[]): void {
-    try {
-      const cache = this.getCache();
-      const cached = cache[movieId];
-
-      if (cached) {
-        cached.keywords = sanitizedKeywords;
-        cached.sanitized = true;
-        cached.movie.keywords = sanitizedKeywords;
-        localStorage.setItem(this.cacheKey, JSON.stringify(cache));
-        console.log(`Updated cache with sanitized keywords for: ${cached.movie.title}`);
-      }
-    } catch (error) {
-      console.error('Error updating cache with sanitized keywords:', error);
-    }
-  }
-
   getCacheStats(): { totalMovies: number; totalSizeKB: number } {
     const cache = this.getCache();
     const totalMovies = Object.keys(cache).length;
